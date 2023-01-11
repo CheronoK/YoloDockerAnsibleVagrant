@@ -1,64 +1,54 @@
 ---
 - name: Set up Docker images
   hosts: all
-  gather_facts: no
+  become: true
   vars:
-    image_1_name: "cheronok/yolo-client"
-    image_1_tag: "1.0"
-    image_2_name: "cheronok/yolo-backend"
-    image_2_tag: "1.0"
-    image_3_name: "mongo"
-    image_3_tag: "latest"    
-  tasks:
-  - name: Pull client image
-    docker_image:
-      name: "{{ image_1_name }}:{{ image_1_tag }}"
-      state: present
-    tags:
-      - client
-      
-  - name: Pull backend image
-    docker_image:
-      name: "{{ image_2_name }}:{{ image_2_tag }}"
-      state: present
-    tags:
-      - backend
-
-  - name: Pull mongo image
-    docker_image:
-      name: "{{ image_3_name }}:{{ image_3_tag }}"
-      state: present
-    tags:
+    container_names:
+      - yolo-backend
+      - yolo-client
       - mongo
-  - name: block of client and backend 
-    block:
-    - name: Create container for client
-      docker_container:
-        name: "{{ image_1_name }}"
-        image: "{{ image_1_name }}:{{ image_1_tag }}"
-        state: started
-        ports:
-          - ""3000:3000""
-    - name: Create container for backend
-      docker_container:
-        name: "{{ image_2_name }}"
-        image: "{{ image_2_name }}:{{ image_2_tag }}"
-        state: started
-        ports:
-          - "5000:5000"
-    tags:
-      - clientcontainer
-      - backendcontainer
+    container_images:
+      - cheronok/yolo-client
+      - cheronok/yolo-backend
+      - mongo    
+  tasks:
+  - name: Install Docker
+    package:
+      name: docker
+      state: present
 
-  - name: Create container for mongo
-    docker_container:
-      name: "{{ image_3_name }}"
-      image: "{{ image_3_name }}:{{ image_3_tag }}"
+  - name: Start and enable Docker service
+    service:
+      name: docker
       state: started
-      ports:
-        - "27017:27017"
+      enabled: yes    
     tags:
-      - mongocontainer
+      -docker
+
+  - name: Pull container images
+    command: docker pull {{ item }}
+    with_items: "{{ container_images }}"
+    tags:
+      - images
+    
+  - name: Create a container
+    block:
+    - command: docker run -d --name {{ item.name }} {{ item.image }}
+      with_items:
+        - name: "{{ container_names[0] }}"
+          image: "{{ container_images[0] }}"
+          state: started
+          ports: "3000:3000"
+        - name: "{{ container_names[1] }}"
+          image: "{{ container_images[1] }}"
+          state: started
+          ports: "5000:5000"
+        - name: "{{ container_names[2] }}"
+          image: "{{ container_images[2] }}"
+          state: started
+          ports: "27017:27017"
+    tags:
+      - containers
 
 - name: Provision Vagrant machine and run setup for cloned application
   hosts: localhost
@@ -67,7 +57,7 @@
     repo_url: https://github.com/cheronok/yolo.git
     repo_path: /opt/yolo
   tasks:
-  - name: Clone repository
+  - name: Clone the application repository
     git:
       repo: "{{ repo_url }}"
       dest: "{{ repo_path }}"

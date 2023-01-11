@@ -12,12 +12,13 @@ Vagrant.configure("2") do |config|
     end
     config.vm.define "webserver" do |web|
       config.vm.hostname = "yolo"
-      config.vm.network :private_network, ip: "192.168.10.10"
+      config.vm.network :private_network, ip: "192.168.56.10"
       config.vm.network "forwarded_port", guest: "80", host: "8080"
-
+      config.ssh.insert_key = false
+      
       #Provision the server with Ansible
       config.vm.provision "ansible" do |ansible|
-        ansible.playbook="playbook.yaml"
+        ansible.playbook="playbook.yml"
       end
      end
    end
