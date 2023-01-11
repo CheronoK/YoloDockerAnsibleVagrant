@@ -1,0 +1,22 @@
+language: python
+python:
+  - "2.7"
+
+services:
+  - docker
+
+env:
+  - ANSIBLE_VERSION=2.9.12
+
+before_install:
+  - sudo apt-get update
+  - sudo apt-get -y install python-pip python-dev build-essential
+  - pip install --upgrade pip
+  - pip install ansible==$ANSIBLE_VERSION
+
+install:
+  - ansible --version
+
+script:
+  - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
+  - ansible-playbook tests/test.yml -i tests/inventory --connection=local --become --become-user=root
