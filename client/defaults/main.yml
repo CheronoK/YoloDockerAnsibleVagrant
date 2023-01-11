@@ -1,0 +1,4 @@
+---
+containers:
+  - name: clientcontainer
+    image: cheronok/yolo-client
