@@ -10,7 +10,8 @@
     container_images:
       - cheronok/yolo-client
       - cheronok/yolo-backend
-      - mongo    
+      - mongo 
+    docker_network: my-network     
   tasks:
   - name: Install Docker
     package:
@@ -39,14 +40,23 @@
           image: "{{ container_images[0] }}"
           state: started
           ports: "3000:3000"
+          networks:
+          - name: "{{ docker_network }}"
+          tty: true
         - name: "{{ container_names[1] }}"
           image: "{{ container_images[1] }}"
           state: started
           ports: "5000:5000"
+          networks:
+          - name: "{{ docker_network }}"
+          tty: true
         - name: "{{ container_names[2] }}"
           image: "{{ container_images[2] }}"
           state: started
           ports: "27017:27017"
+          networks:
+          - name: "{{ docker_network }}"
+          tty: true
     tags:
       - containers
 
@@ -56,18 +66,31 @@
   vars:
     repo_url: https://github.com/cheronok/yolo.git
     repo_path: /opt/yolo
+    
   tasks:
   - name: Clone the application repository
     git:
       repo: "{{ repo_url }}"
       dest: "{{ repo_path }}"
       version: master
+
   - name: Install dependencies
+    apt:
+      name: "{{ item }}"
+      state: present
+    with_items:
+    - build-essential
+    - libssl-dev
+    - python3-dev
+    - python3-pip
+  
+  - name: Install application requirements
     shell: |
       cd {{ repo_path }}/client
       npm install
       cd {{ repo_path }}/backend
       pip install -r requirements.txt
+
   - name: Start application
     shell: |
       cd {{ repo_path }}/client
