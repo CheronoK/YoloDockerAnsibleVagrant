@@ -1,0 +1,18 @@
+---
+- name: Install Docker
+  package:
+    name: docker
+    state: present
+
+- name: Start Docker service
+  service:
+    name: docker
+    state: started
+
+- name: Create container for mongodb
+      docker_container:
+        name: "{{ image_3_name }}"
+        image: "{{ image_3_name }}:{{ image_3_tag }}"
+        state: started
+        ports:
+          - "27017:27017"
