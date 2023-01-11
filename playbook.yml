@@ -1,0 +1,86 @@
+---
+- name: Set up Docker images
+  hosts: all
+  gather_facts: no
+  vars:
+    image_1_name: "cheronok/yolo-client"
+    image_1_tag: "1.0"
+    image_2_name: "cheronok/yolo-backend"
+    image_2_tag: "1.0"
+    image_3_name: "mongo"
+    image_3_tag: "latest"    
+  tasks:
+  - name: Pull client image
+    docker_image:
+      name: "{{ image_1_name }}:{{ image_1_tag }}"
+      state: present
+    tags:
+      - client
+      
+  - name: Pull backend image
+    docker_image:
+      name: "{{ image_2_name }}:{{ image_2_tag }}"
+      state: present
+    tags:
+      - backend
+
+  - name: Pull mongo image
+    docker_image:
+      name: "{{ image_3_name }}:{{ image_3_tag }}"
+      state: present
+    tags:
+      - mongo
+  - name: block of client and backend 
+    block:
+    - name: Create container for client
+      docker_container:
+        name: "{{ image_1_name }}"
+        image: "{{ image_1_name }}:{{ image_1_tag }}"
+        state: started
+        ports:
+          - ""3000:3000""
+    - name: Create container for backend
+      docker_container:
+        name: "{{ image_2_name }}"
+        image: "{{ image_2_name }}:{{ image_2_tag }}"
+        state: started
+        ports:
+          - "5000:5000"
+    tags:
+      - clientcontainer
+      - backendcontainer
+
+  - name: Create container for mongo
+    docker_container:
+      name: "{{ image_3_name }}"
+      image: "{{ image_3_name }}:{{ image_3_tag }}"
+      state: started
+      ports:
+        - "27017:27017"
+    tags:
+      - mongocontainer
+
+- name: Provision Vagrant machine and run setup for cloned application
+  hosts: localhost
+  connection: local
+  vars:
+    repo_url: https://github.com/cheronok/yolo.git
+    repo_path: /opt/yolo
+  tasks:
+  - name: Clone repository
+    git:
+      repo: "{{ repo_url }}"
+      dest: "{{ repo_path }}"
+      version: master
+  - name: Install dependencies
+    shell: |
+      cd {{ repo_path }}/client
+      npm install
+      cd {{ repo_path }}/backend
+      pip install -r requirements.txt
+  - name: Start application
+    shell: |
+      cd {{ repo_path }}/client
+      npm start &
+      cd {{ repo_path }}/backend
+      python manage.py runserver      
