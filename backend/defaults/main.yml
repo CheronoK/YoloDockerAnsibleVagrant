@@ -1,0 +1,4 @@
+---
+containers:
+  - name: backendconatiner
+    image: cheronok/yolo-backend
